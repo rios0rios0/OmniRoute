@@ -1,0 +1,98 @@
+name: Publish custom image to GHCR
+
+# Builds this fork's OmniRoute image and publishes it to GHCR, so the dotfiles can pin
+# ghcr.io/rios0rios0/omniroute by digest instead of following the official image.
+#
+# `runner-base` is the flavour the dotfiles' Compose stack runs: no Chromium/Playwright, so
+# the web-cookie providers (gemini-web, claude-web, claude-turnstile) are not available.
+# Switch `target` to `runner-web` if those are needed.
+#
+# The branch tag moves with every build; `sha-<full sha>` and the digest reported in the job
+# summary name the exact commit. Pin the digest -- a mutable tag cannot prove which code a
+# running container holds.
+#
+# Hosted ubuntu-24.04 has the 16 GB the 12 GB webpack heap needs; the upstream publish
+# workflow measured 27-55 minutes for this build. Keep `OMNIROUTE_USE_TURBOPACK=0`: the
+# Dockerfile's webpack default is the escape hatch for builds where Turbopack has failed.
+
+on:
+  push:
+    branches:
+      - feat/model-quota-api
+  workflow_dispatch:
+
+concurrency:
+  group: publish-ghcr-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/rios0rios0/omniroute
+
+jobs:
+  publish:
+    name: Build and push linux/amd64
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: runner-base
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:feat-model-quota-api
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/rios0rios0/OmniRoute
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.description=OmniRoute fork (rios0rios0), branch feat/model-quota-api
+          build-args: |
+            OMNIROUTE_USE_TURBOPACK=0
+            OMNIROUTE_BUILD_MEMORY_MB=12288
+          cache-from: type=gha,scope=omniroute-custom-amd64
+          cache-to: type=gha,scope=omniroute-custom-amd64,mode=max,ignore-error=true
+
+      - name: Report the digest to pin
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          if [ -z "$DIGEST" ]; then
+            echo "::error::build-push-action returned no digest"
+            exit 1
+          fi
+          reference="${IMAGE}@${DIGEST}"
+          echo "[publish-ghcr] built $reference"
+          {
+            echo '### Custom OmniRoute image'
+            echo
+            echo "Pin this in \`local-services/omniroute/compose.yaml\`:"
+            echo
+            echo '```yaml'
+            echo "image: '${reference}'"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
