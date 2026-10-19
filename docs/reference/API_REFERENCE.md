@@ -888,6 +888,7 @@ completion.
 | Method | Path                | Description                                                                           |
 | ------ | ------------------- | ------------------------------------------------------------------------------------- |
 | GET    | `/v1/quotas/check`  | Pre-validate quota for a `provider` + `accountId` before issuing a registered key     |
+| GET    | `/v1/quota`         | Self-service quota windows for one selected model (requires `self:account-quota`)     |
 | POST   | `/v1/issues/report` | Report a quota/key issuance failure to GitHub (requires `GITHUB_ISSUES_REPO` + token) |
 
 **Auth:** Bearer API key (`isAuthenticated`).
@@ -995,6 +996,74 @@ endpoint (`NN% left`) and computed used percentage as `100 - NN`, migrating to `
 - Reading raw JSON values will reflect **actual upstream consumption** (60% used in the example above).
 - If the integration wishes to preserve the text endpoint's usable-allowance semantics, it can evaluate
   the effective remaining formula client-side using `quotaWindowThresholds` for connection-level overrides.
+
+---
+
+## Model quota (`/api/v1/quota`)
+
+`GET /api/v1/quota?model=<model>[&refresh=1]` answers one question: **which upstream quota
+windows apply to the model this client selected, and how fresh are they?** It belongs to the
+self-service family (`/api/v1/me`): the key must carry the `self:account-quota` scope, and
+readings come only from that key's own `allowedConnections` (all of its active connections
+when the allowlist is empty). Another account's quota is never returned, and connection ids
+or credential material are never included in the payload.
+
+```bash
+curl -H "Authorization: Bearer <your-api-key>" \
+  "http://localhost:20128/api/v1/quota?model=claude/claude-sonnet-4-5"
+```
+
+- `model` (required) accepts what you would send to chat: `provider/model`, a provider
+  alias, or a stored combo / `auto/*` name.
+- `refresh=1` forces a live upstream refresh instead of reusing a reading newer than five
+  minutes. Without it, a reading older than five minutes triggers one bounded refresh; a
+  reading older than fifteen minutes is still served, flagged `stale`, so a failed refresh
+  never invents values.
+
+### Response
+
+```json
+{
+  "model": { "providerID": "omniroute", "modelID": "claude/claude-sonnet-4-5" },
+  "resolved": { "providerID": "claude", "modelID": "claude-sonnet-4-5" },
+  "scope": { "type": "upstream-account-plan", "providerID": "claude", "route": null },
+  "status": "available",
+  "plan": "Max",
+  "windows": [
+    {
+      "period": "5h",
+      "windowName": "session",
+      "status": "available",
+      "source": "provider-limits",
+      "usedPercentage": 42,
+      "remainingPercentage": 58,
+      "resetsAt": "2026-10-19T17:00:00.000Z",
+      "observedAt": "2026-10-19T12:00:00.000Z"
+    }
+  ],
+  "updatedAt": "2026-10-19T12:00:00.000Z"
+}
+```
+
+- `period` is the canonical bucket (`5h`, `7d`, `30d`) when the provider window maps to one;
+  provider-native windows keep their own key and are returned as-is, so clients never have
+  to assume a fixed window set.
+- `limit`/`used`/`remaining` appear when the upstream reports amounts; percentage-only
+  windows report `usedPercentage`/`remainingPercentage`. Missing information is never
+  presented as an unlimited limit.
+- Per-window `status`: `available`, `stale`, or `unavailable`. Top-level `status`:
+  `available`, `partial`, `stale`, `unavailable`, or `unsupported` (the provider exposes no
+  quota surface at all).
+- `source` is `provider-limits` (persisted upstream snapshot) or `routing-observation` (the
+  routing quota cache); `observedAt` records when the reading was taken.
+
+### Automatic and fallback routing
+
+For `auto/*` combos and stored combos there is no single destination to report. The response
+keeps `scope.type` at `route` (or `aggregate` when one provider has several accounts),
+`resolved` stays `null`, and `routes[]` lists each candidate with its own windows and plan.
+A candidate whose upstream cannot be resolved is reported with `providerID: null` rather
+than being attributed to a guessed provider.
 
 ---
 

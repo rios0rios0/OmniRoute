@@ -14188,6 +14188,41 @@ paths:
       responses:
         "200":
           description: OK
+  /api/v1/quota:
+    get:
+      tags:
+        - V1 Quotas
+      summary: "GET quota"
+      description: |
+        Self-service quota windows for one selected model, scoped to the authenticated API
+        key (requires the `self:account-quota` scope). Resolves `model` to the key's own
+        connections and reports each applicable upstream window — canonical `5h`/`7d`/`30d`
+        when the provider maps to them, provider-native windows otherwise — with source and
+        freshness. `auto/*` and stored combos keep route-level scope.
+      parameters:
+        - name: model
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: refresh
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - "1"
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Missing model
+        "401":
+          description: Missing or invalid API key
+        "403":
+          description: Key lacks the self:account-quota scope
+        "404":
+          description: Unknown or unavailable model
   /api/v1/quotas/check:
     get:
       tags:
