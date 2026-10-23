@@ -61,6 +61,7 @@ import { getHyperAgentUsage } from "./usage/hyperagent.ts";
 import { getGitHubUsage, formatGitHubQuotaSnapshot, inferGitHubPlanName } from "./usage/github.ts";
 import { getCrofUsage } from "./usage/crof.ts";
 import { getClinepassUsage } from "./usage/clinepass.ts";
+import { getNvidiaUsage } from "./usage/nvidia.ts";
 import { getNanoGptUsage } from "./usage/nanogpt.ts";
 import { getNanUsage } from "./usage/nan.ts";
 import { getApmixUsage } from "./usage/apmix.ts";
@@ -207,6 +208,10 @@ export async function getUsageForProvider(
     case "clinepass":
       // Dual-auth: OAuth WorkOS token in `accessToken`, or a BYOK key in `apiKey`.
       return await getClinepassUsage(accessToken, apiKey);
+    case "cline":
+      return await getClinepassUsage(accessToken, apiKey, "Cline");
+    case "nvidia":
+      return await getNvidiaUsage(id || "");
     case "bailian-coding-plan":
       return await getBailianCodingPlanUsage(id || "", apiKey || "", providerSpecificData);
     case "qwen-cloud-token-plan":

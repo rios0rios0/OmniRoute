@@ -41,6 +41,8 @@ export const USAGE_SUPPORTED_PROVIDERS: readonly string[] = [
   "minimax-cn",
   "crof",
   "clinepass",
+  "cline",
+  "nvidia",
   "nanogpt",
   "nan",
   // Apmix (apmix.ai) — monthly weighted-token allowance + self-set daily/weekly caps

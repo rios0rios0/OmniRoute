@@ -44,6 +44,9 @@ export const USAGE_FETCHER_PROVIDERS = [
   "crof",
   // ClinePass 5-hour / weekly / monthly limits (GET /api/v1/users/me/plan/usage-limits)
   "clinepass",
+  "cline",
+  // NVIDIA NIM local sliding-window RPM budget (no upstream usage API).
+  "nvidia",
   "bailian-coding-plan",
   "qwen-cloud-token-plan",
   "nanogpt",

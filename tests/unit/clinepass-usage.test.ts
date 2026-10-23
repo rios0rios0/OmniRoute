@@ -89,3 +89,18 @@ test("clinepass is registered for quota display and dispatched by getUsageForPro
   })) as { quotas?: Record<string, unknown> };
   assert.ok(result.quotas?.session);
 });
+
+test("Cline OAuth account usage is registered and uses the shared Cline limits endpoint", async () => {
+  assert.ok(USAGE_FETCHER_PROVIDERS.includes("cline"));
+  assert.ok(USAGE_SUPPORTED_PROVIDERS.includes("cline"));
+  mockFetch(200, LIVE_PAYLOAD, []);
+
+  const result = (await getUsageForProvider({
+    provider: "cline",
+    accessToken: "oauth-token",
+  })) as { quotas?: Record<string, unknown> };
+
+  assert.ok(result.quotas?.session);
+  assert.ok(result.quotas?.weekly);
+  assert.ok(result.quotas?.monthly);
+});

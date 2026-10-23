@@ -21,6 +21,8 @@ const PROVIDER_COLUMNS: Record<string, string[]> = {
     "banked_reset_credits",
   ],
   claude: ["session", "weekly"],
+  cline: ["session", "weekly", "monthly"],
+  nvidia: ["requests"],
   glm: ["session", "weekly", "mcp_monthly", "banked_reset_credits"],
   "glm-cn": ["session", "weekly", "mcp_monthly", "banked_reset_credits"],
   glmt: ["session", "weekly", "mcp_monthly", "banked_reset_credits"],

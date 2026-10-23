@@ -41,6 +41,12 @@ export interface MultiAcquireResult extends AcquireResult {
   lease?: SlidingWindowLease;
 }
 
+export interface WindowUsageSnapshot {
+  used: number;
+  remaining: number;
+  resetAt: number | null;
+}
+
 interface Hit {
   id: number;
   timestamp: number;
@@ -118,6 +124,19 @@ export class SlidingWindowLimiter {
           }
         },
       },
+    };
+  }
+
+  /** Read current usage without consuming a slot. */
+  getUsage(key: string, window: RateLimitWindow): WindowUsageSnapshot {
+    const now = this.now();
+    const cutoff = now - window.windowMs;
+    const live = (this.hits.get(key) ?? []).filter((hit) => hit.timestamp > cutoff);
+    this.set(key, live);
+    return {
+      used: live.length,
+      remaining: Math.max(0, window.requests - live.length),
+      resetAt: live.length > 0 ? live[0].timestamp + window.windowMs : null,
     };
   }
 

@@ -75,6 +75,13 @@ export function getProviderDefaultRateLimit(provider: string): RateLimitWindow |
   return (providerDefaultOverrides ?? PROVIDER_DEFAULT_RATE_LIMITS)[provider];
 }
 
+/** Read this process's rolling-window usage without consuming an RPM slot. */
+export function getProviderDefaultUsage(provider: string, connectionId?: string | null) {
+  const window = getProviderDefaultRateLimit(provider);
+  if (!window) return null;
+  return limiter.getUsage(`${provider}:${connectionId || "_"}`, window);
+}
+
 /**
  * Resolve a provider's per-connection concurrency cap: operator override →
  * `PROVIDER_DEFAULT_CONCURRENCY_CAP[provider]` → `fallback`. Used by the nvidia

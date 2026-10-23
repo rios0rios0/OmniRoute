@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **fix(providers):** stopped Cline connection tests from requiring an unrelated local CLI, added Cline usage-limit visibility, and showed NVIDIA NIM's local request-window quota on the Provider Quota page
+
 ### ✨ New Features
 
 - **feat(dashboard):** adaptive context-budget dial on the compression settings panel — mode (`off` / `floor` / `replace-autotrigger`) and policy (`reserve-output` / `percentage` / `absolute`) persist via `PUT /api/settings/compression` `contextBudget`. Completes the dashboard half of #7005 (API + DB already shipped in #7183).

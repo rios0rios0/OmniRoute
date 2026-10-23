@@ -22,6 +22,8 @@ export const PROVIDER_LABEL: Record<string, string> = {
   llmgateway: "LLM Gateway",
   lyceum: "Lyceum",
   clinepass: "ClinePass",
+  nvidia: "NVIDIA NIM",
+  cline: "Cline",
 };
 
 export const PROVIDER_ORDER: Record<string, number> = {
@@ -44,6 +46,8 @@ export const PROVIDER_ORDER: Record<string, number> = {
   llmgateway: 18,
   lyceum: 19,
   clinepass: 20,
+  nvidia: 21,
+  cline: 22,
 };
 
 export const TIER_FILTERS = [

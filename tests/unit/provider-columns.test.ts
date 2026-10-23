@@ -6,6 +6,34 @@ const providerColumns =
 const utils =
   await import("../../src/app/(dashboard)/dashboard/usage/components/ProviderLimits/utils.tsx");
 
+test("Cline and NVIDIA use their stable quota columns", () => {
+  // given
+  const clineQuotas = utils.parseQuotaData("cline", {
+    quotas: {
+      session: { used: 3, total: 100 },
+      weekly: { used: 10, total: 100 },
+      monthly: { used: 17, total: 100 },
+    },
+  });
+  const nvidiaQuotas = utils.parseQuotaData("nvidia", {
+    quotas: { requests: { used: 1, total: 40 } },
+  });
+
+  // when
+  const clineSchema = providerColumns.getProviderColumns("cline", clineQuotas);
+  const nvidiaSchema = providerColumns.getProviderColumns("nvidia", nvidiaQuotas);
+
+  // then
+  assert.deepEqual(
+    clineSchema.columns.map((column) => column.key),
+    ["session", "weekly", "monthly"]
+  );
+  assert.deepEqual(
+    nvidiaSchema.columns.map((column) => column.key),
+    ["requests"]
+  );
+});
+
 test("getProviderColumns: Codex surfaces all OpenAI Codex quota columns in fixed order", () => {
   const quotas = utils.parseQuotaData("codex", {
     bankedResetCredits: 2,

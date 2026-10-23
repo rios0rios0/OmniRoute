@@ -423,6 +423,11 @@ export default function QuotaCardExpanded({
           ))}
         </div>
       )}
+      {providerId === "nvidia" && message && quotas.length > 0 && (
+        <div className="text-[10px] text-text-muted italic" title={message}>
+          {message}
+        </div>
+      )}
 
       {isProviderBillingProvider(providerId) && billing && (
         <ProviderBillingDetails billing={billing} />
