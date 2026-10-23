@@ -102,7 +102,10 @@ export default function QuotaCard({
     () => getHiddenQuotaRows(visibilityScope, rawQuotas, quotaVisibility),
     [visibilityScope, rawQuotas, quotaVisibility]
   );
-  const cardStatus = useMemo<CardStatus>(() => worstStatus(quotas), [quotas]);
+  const cardStatus = useMemo<CardStatus>(
+    () => worstStatus(quotas, connection.provider),
+    [quotas, connection.provider]
+  );
   const tierMeta = useMemo(
     () =>
       normalizePlanTier(

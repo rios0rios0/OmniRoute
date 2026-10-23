@@ -402,10 +402,12 @@ function quotaStatus(q: any): QuotaStatusLevel {
   return quotaStatusLevel(quotaRemainingPercent(q));
 }
 
-export function worstStatus(quotas: any[] | undefined): CardStatus {
-  if (!quotas || quotas.length === 0) return "empty";
+export function worstStatus(quotas: any[] | undefined, providerId?: string): CardStatus {
+  const statusQuotas =
+    providerId === "openrouter" ? (quotas ?? []).filter((quota) => !quota?.isCredits) : quotas;
+  if (!statusQuotas || statusQuotas.length === 0) return "empty";
   let worst: "ok" | "alert" = "ok";
-  for (const q of quotas) {
+  for (const q of statusQuotas) {
     const s = quotaStatus(q);
     if (s === "critical") return "critical";
     if (s === "alert" && worst === "ok") worst = "alert";

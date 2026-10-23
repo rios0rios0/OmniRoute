@@ -46,6 +46,56 @@ test("bar colour, card status and quotaStatusLevel agree across 0..100", () => {
   }
 });
 
+test("unlimited informational counters do not make a provider card critical", () => {
+  // given
+  const parsed = utils.parseQuotaData("cloudflare-ai", {
+    quotas: {
+      neurons: { used: 271, total: 10_000, remainingPercentage: 97 },
+      requests: { used: 18, total: 0, unlimited: true },
+    },
+  });
+
+  // when
+  const status = worstStatus(parsed);
+
+  // then
+  assert.equal(status, "ok");
+  assert.equal(
+    parsed.find((quota: { name: string }) => quota.name === "requests")?.unlimited,
+    true
+  );
+});
+
+test("OpenRouter zero-dollar credits do not override healthy free-request quotas", () => {
+  // given
+  const quotas = [
+    { name: "free_daily", remainingPercentage: 100 },
+    { name: "free_rpm", remainingPercentage: 100 },
+    { name: "credits", used: 0, total: 0, remaining: 0, remainingPercentage: 0, isCredits: true },
+  ];
+
+  // when
+  const status = worstStatus(quotas, "openrouter");
+
+  // then
+  assert.equal(status, "ok");
+});
+
+test("OpenRouter still reports critical when a free request window is exhausted", () => {
+  // given
+  const quotas = [
+    { name: "free_daily", remainingPercentage: 0 },
+    { name: "free_rpm", remainingPercentage: 100 },
+    { name: "credits", remainingPercentage: 0, isCredits: true },
+  ];
+
+  // when
+  const status = worstStatus(quotas, "openrouter");
+
+  // then
+  assert.equal(status, "critical");
+});
+
 test("the contradictory 70/30 helpers are gone from ProviderLimits/utils", () => {
   assert.equal("getStatusColor" in utils, false);
   assert.equal("getStatusEmoji" in utils, false);

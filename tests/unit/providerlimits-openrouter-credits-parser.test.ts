@@ -5,6 +5,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { parseQuotaData } from "../../src/app/(dashboard)/dashboard/usage/components/ProviderLimits/quotaParsing.ts";
+const { worstStatus } =
+  await import("../../src/app/(dashboard)/dashboard/usage/components/ProviderLimits/utils.tsx");
 
 const parseOpenrouter = (data: unknown) => parseQuotaData("openrouter", data) as QuotaRow[];
 
@@ -127,4 +129,23 @@ test("parseOpenrouter passes non-credits quota keys through normalizeQuotaEntry"
   assert.equal(row.total, 100);
   assert.equal(row.remaining, 88);
   assert.notEqual(row.isCredits, true);
+});
+
+test("parseOpenrouter marks a zero-dollar credits row as a balance, not a usage quota", () => {
+  // given
+  const rows = parseOpenrouter({
+    quotas: {
+      free_daily: { used: 0, total: 50, remaining: 50, remainingPercentage: 100 },
+      free_rpm: { used: 0, total: 20, remaining: 20, remainingPercentage: 100 },
+      credits: { used: 0, total: 0, remaining: 0, remainingPercentage: 0, currency: "USD" },
+    },
+  });
+
+  // when
+  const credits = findCredits(rows);
+  const status = worstStatus(rows, "openrouter");
+
+  // then
+  assert.equal(credits.isCredits, true);
+  assert.equal(status, "ok");
 });

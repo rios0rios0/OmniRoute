@@ -99,7 +99,8 @@ export function sortProviderConnectionsByPriority(
     const bUsable = hasUsableQuota(bQuotas);
     if (aUsable !== bUsable) return aUsable ? -1 : 1;
 
-    const statusDiff = STATUS_RANK[worstStatus(aQuotas)] - STATUS_RANK[worstStatus(bQuotas)];
+    const statusDiff =
+      STATUS_RANK[worstStatus(aQuotas, a.provider)] - STATUS_RANK[worstStatus(bQuotas, b.provider)];
     if (statusDiff !== 0) return statusDiff;
 
     const resetDiff = getSoonestResetMs(aQuotas) - getSoonestResetMs(bQuotas);
