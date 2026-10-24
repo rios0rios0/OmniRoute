@@ -177,3 +177,86 @@ test("quotaSnapshots aggregation returns one row per bucket with the tightest wi
   assert.equal(byConnection[0].provider, "claude:conn-1");
   assert.equal(byConnection[0].remainingPct, 10);
 });
+
+test("quotaSnapshots utilization ignores unreported counters and keeps reported provider quotas", () => {
+  const db = coreDb.getDbInstance();
+  const insert = db.prepare(
+    `INSERT INTO quota_snapshots
+     (provider, connection_id, window_key, remaining_percentage, is_exhausted, next_reset_at, window_duration_ms, raw_data, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  const at = "2026-10-24T12:00:00.000Z";
+  const row = (provider: string, key: string, remaining: number, rawData: string | null = null) =>
+    insert.run(provider, `${provider}-connection`, key, remaining, 0, null, null, rawData, at);
+
+  // given
+  row("openrouter", "free_daily", 100);
+  row("openrouter", "free_rpm", 100);
+  row("openrouter", "credits", 0, JSON.stringify({ fractionReported: false }));
+  row("openrouter", "credits_legacy", 0);
+  row("openrouter", "credits", 0);
+  row("cloudflare-ai", "neurons", 94);
+  row("cloudflare-ai", "requests", 0, JSON.stringify({ fractionReported: false }));
+  row("cloudflare-ai", "requests", 0);
+
+  // when
+  const points = quotaSnapshotsDb.getAggregatedSnapshots({
+    since: "2026-10-24T00:00:00.000Z",
+    bucketMinutes: 10,
+  });
+
+  // then
+  assert.deepEqual(
+    points.map((point) => [point.provider, point.remainingPct, point.windowKey]).sort(),
+    [
+      ["cloudflare-ai", 94, "neurons"],
+      ["openrouter", 100, "free_daily"],
+    ]
+  );
+});
+
+test("quotaSnapshots ignores an unreported window without discarding reported provider history", () => {
+  const db = coreDb.getDbInstance();
+  const insert = db.prepare(
+    `INSERT INTO quota_snapshots
+     (provider, connection_id, window_key, remaining_percentage, is_exhausted, next_reset_at, window_duration_ms, raw_data, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  insert.run(
+    "openai",
+    "openai-connection",
+    "reported-session",
+    60,
+    0,
+    null,
+    null,
+    null,
+    "2026-10-24T12:00:00.000Z"
+  );
+  insert.run(
+    "openai",
+    "openai-connection",
+    "unreported-weekly",
+    0,
+    0,
+    null,
+    null,
+    JSON.stringify({ fractionReported: false }),
+    "2026-10-24T12:00:00.000Z"
+  );
+
+  const points = quotaSnapshotsDb.getAggregatedSnapshots({
+    since: "2026-10-24T00:00:00.000Z",
+    bucketMinutes: 10,
+  });
+
+  assert.deepEqual(points, [
+    {
+      timestamp: "2026-10-24 12:00:00",
+      provider: "openai",
+      remainingPct: 60,
+      isExhausted: false,
+      windowKey: "reported-session",
+    },
+  ]);
+});
