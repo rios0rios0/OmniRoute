@@ -11,7 +11,7 @@ import {
 } from "@/lib/db/modelCatalogHealth";
 import type { JobRegistry } from "@/lib/jobRegistry/registry";
 
-const MODEL_CATALOG_HEALTH_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const MODEL_CATALOG_HEALTH_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 const MODEL_CATALOG_HEALTH_CONCURRENCY = 4;
 
 type CatalogModel = {
@@ -111,12 +111,12 @@ export function registerModelCatalogHealthJob(registry: JobRegistry): void {
   const now = new Date().toISOString();
   registry.register({
     id: "model_catalog_health",
-    type: "cron",
-    cron: "0 3 * * *",
-    intervalMs: null,
+    type: "interval",
+    cron: null,
+    intervalMs: MODEL_CATALOG_HEALTH_INTERVAL_MS,
     enabled: true,
     envFlag: null,
-    config: { interval: "daily" },
+    config: { interval: "hourly" },
     createdAt: now,
     updatedAt: now,
     handler: async () => ({

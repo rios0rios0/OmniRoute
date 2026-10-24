@@ -149,6 +149,36 @@ import {
   listWorkingModelCatalogHealth,
 } from "@/lib/db/modelCatalogHealth";
 
+// Display-name sanitization: some upstream catalogs already carry a provider
+// namespace inside the model id (Cloudflare `@cf/…`, Cline Pass `cline-pass/…`,
+// NVIDIA `nvidia/…`). The curated catalog re-prefixes every id with the
+// provider's short alias, which would read as `cf/@cf/…` or `nvidia/nvidia/…`.
+// Strip that redundant nested segment from the DISPLAY name only — the `id`
+// stays untouched so routing keeps resolving.
+const REDUNDANT_MODEL_NAME_PREFIXES: Record<string, string[]> = {
+  "cloudflare-ai": ["@cf"],
+  clinepass: ["cline-pass"],
+  nvidia: ["nvidia"],
+};
+
+function sanitizeCatalogModelName(providerId: string, fullId: string): string {
+  const slash = fullId.indexOf("/");
+  if (slash <= 0) return fullId;
+  const prefix = fullId.slice(0, slash);
+  let rest = fullId.slice(slash + 1);
+  for (const redundant of REDUNDANT_MODEL_NAME_PREFIXES[providerId] ?? []) {
+    if (rest === redundant) {
+      rest = "";
+      break;
+    }
+    if (rest.startsWith(`${redundant}/`)) {
+      rest = rest.slice(redundant.length + 1);
+      break;
+    }
+  }
+  return rest ? `${prefix}/${rest}` : prefix;
+}
+
 // Public API of this module is preserved after the catalog helper extraction:
 // `isVisionModelId` (vision-detection-consistency.test.ts) and
 // `getCustomVisionCapabilityFields` (llm-selector-custom-vision-models.test.ts)
@@ -2126,8 +2156,18 @@ async function buildUnifiedModelsResponseCore(
       // Prefix every advertised display name with its provider so pickers that
       // render `name` (ocode shows `name || id`) always show which provider the
       // model belongs to — no more bare names inside the OmniRoute provider.
+      // The nested provider namespace (e.g. `cf/@cf/…`) is collapsed to the
+      // short alias so it never reads as a duplicated prefix.
       finalModels = finalModels.map((model) =>
-        typeof model.id === "string" ? { ...model, name: model.id } : model
+        typeof model.id === "string"
+          ? {
+              ...model,
+              name: sanitizeCatalogModelName(
+                typeof model.owned_by === "string" ? model.owned_by : "",
+                model.id
+              ),
+            }
+          : model
       );
     }
 
