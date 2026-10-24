@@ -18,7 +18,7 @@ name: Publish custom image to GHCR
 on:
   push:
     branches:
-      - feat/model-quota-api
+      - reworked
   workflow_dispatch:
 
 concurrency:
@@ -64,12 +64,12 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ${{ env.IMAGE }}:feat-model-quota-api
+            ${{ env.IMAGE }}:reworked
             ${{ env.IMAGE }}:sha-${{ github.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/rios0rios0/OmniRoute
             org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.description=OmniRoute fork (rios0rios0), branch feat/model-quota-api
+            org.opencontainers.image.description=OmniRoute fork (rios0rios0), branch reworked
           build-args: |
             OMNIROUTE_USE_TURBOPACK=0
             OMNIROUTE_BUILD_MEMORY_MB=12288
