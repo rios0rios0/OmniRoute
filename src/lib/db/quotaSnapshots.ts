@@ -6,8 +6,6 @@ import {
 } from "./providers/codexAccountState";
 import { isCodexSparkQuotaKey } from "@omniroute/open-sse/config/codexQuotaScopes";
 
-type JsonRecord = Record<string, unknown>;
-
 interface StatementLike<TRow = unknown> {
   all: (...params: unknown[]) => TRow[];
   get: (...params: unknown[]) => TRow | undefined;
@@ -255,6 +253,15 @@ export function getAggregatedSnapshots(opts: {
           window_key
         FROM quota_snapshots
         WHERE ${conditions.join(" AND ")}
+          AND COALESCE(
+            CASE
+              WHEN json_valid(raw_data) THEN json_extract(raw_data, '$.fractionReported')
+              ELSE 1
+            END,
+            1
+          ) != 0
+          AND NOT (provider = 'openrouter' AND lower(window_key) LIKE 'credits%')
+          AND NOT (provider = 'cloudflare-ai' AND lower(window_key) = 'requests')
         GROUP BY ${groupFields}
       )
       SELECT bucket, provider, remainingPct, isExhausted, window_key AS windowKey
