@@ -65,6 +65,7 @@ export async function requestModelBatchTest(
         providerId: batch.providerId,
         modelIds: batch.modelIds,
         respectRateLimit: true,
+        autoHideFailed: true,
       }),
       signal,
     });

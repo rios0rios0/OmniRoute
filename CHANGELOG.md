@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+- OpenCode model discovery now defaults to one provider prefix and respects the configured/visible model selection, avoiding duplicate aliases and unavailable catalog entries.
+- persisted model probe results in SQLite, filtered `/v1/models` to recently working models after health testing begins, and scheduled daily discovery and health checks so dashboard selections survive refreshes.
+
 - **fix(providers):** stopped Cline connection tests from requiring an unrelated local CLI, added Cline usage-limit visibility, and showed NVIDIA NIM's local request-window quota on the Provider Quota page
 
 - **fix(dashboard):** fixed quota card status so unlimited informational counters and OpenRouter's zero-dollar balance do not mark available free usage as critical

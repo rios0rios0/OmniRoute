@@ -23,6 +23,7 @@ import { buildErrorBody } from "@omniroute/open-sse/utils/error";
 
 import { catalogPageCacheKey, catalogStringResponse, parseCatalogPage } from "./catalogPagination";
 import { isCodexModelCatalogClient } from "./catalogRequest";
+import { listWorkingModelCatalogHealth } from "@/lib/db/modelCatalogHealth";
 
 /** Fingerprint an API key for the catalog memo Map. Never store the raw secret. */
 export function fingerprintCatalogAuthKey(apiKey: string): string {
@@ -203,13 +204,18 @@ let _catalogBuilderRuns = 0;
 function buildCatalogCacheKey(request: Request, catalogSettings?: CatalogCacheOptions): string {
   const url = new URL(request.url);
   const prefix = url.searchParams.get("prefix") || "";
+  const isOpenCode = request.headers.get("user-agent")?.toLowerCase().includes("opencode") ?? false;
   const apiKey = extractApiKey(request) || "";
   const isCodex = isCodexModelCatalogClient(request) ? "1" : "0";
-  const configuredOnly = url.searchParams.get("configuredOnly") === "true" ? "1" : "0";
+  const configuredOnly =
+    url.searchParams.get("configuredOnly") === "true" || isOpenCode ? "1" : "0";
+  // Curation changes the emitted prefix set (single alias prefix instead of dual),
+  // so a response cached before health testing began must never be served after it.
+  const curated = listWorkingModelCatalogHealth().length > 0 ? "1" : "0";
   const hideAuto = catalogSettings?.hideAutoCombos ? "1" : "0";
   const hideNoThink = catalogSettings?.hideNoThinkVariants ? "1" : "0";
   const page = catalogPageCacheKey(parseCatalogPage(request));
-  return `${prefix}|${isCodex}|${fingerprintCatalogAuthKey(apiKey)}|${configuredOnly}|${hideAuto}|${hideNoThink}|${page}`;
+  return `${prefix}|${isCodex}|${isOpenCode ? "1" : "0"}|${fingerprintCatalogAuthKey(apiKey)}|${configuredOnly}|${curated}|${hideAuto}|${hideNoThink}|${page}`;
 }
 
 // Tracks the model-catalog cache version (src/lib/db/readCache.ts) as of the last

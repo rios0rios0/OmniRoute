@@ -5,6 +5,7 @@ import { getJobRegistry } from "@/lib/jobRegistry";
 import { registerBudgetResetJob } from "@/lib/jobs/budgetResetJob";
 import { registerTokenHealthCheck } from "@/lib/jobs/tokenHealthCheckJob";
 import { registerLogExportJob } from "@/lib/jobs/logExportJob";
+import { registerModelCatalogHealthJob } from "@/lib/jobs/modelCatalogHealthJob";
 import { backfillVolcPlanAutoSync } from "@/lib/providers/volcPlanAutoSyncBackfill";
 
 // Initialize runtime background sync services once per server process.
@@ -45,6 +46,7 @@ export async function ensureCloudSyncInitialized() {
       registerBudgetResetJob(registry);
       registerTokenHealthCheck(registry);
       registerLogExportJob(registry);
+      registerModelCatalogHealthJob(registry);
       await registry.startAll();
 
       initialized = true;

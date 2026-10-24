@@ -26,6 +26,18 @@ async function fetchCatalog(): Promise<Array<{ id: string; type?: string }>> {
   return body.data;
 }
 
+async function fetchOpenCodeCatalog(): Promise<Array<{ id: string; type?: string }>> {
+  const res = await v1ModelsCatalog.getUnifiedModelsResponse(
+    new Request("http://localhost/api/v1/models", {
+      method: "GET",
+      headers: { "user-agent": "opencode/1.0.0" },
+    })
+  );
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { data: Array<{ id: string; type?: string }> };
+  return body.data;
+}
+
 test.after(() => {
   core.resetDbInstance();
   try {
@@ -90,4 +102,41 @@ test("modelVisibilityAllowlist restricts the chat catalog to exactly the listed 
   assert.ok(chatIds.includes("openai/gpt-4o-mini"), "the allow-listed model itself must remain");
 
   await settingsDb.updateSettings({ modelVisibilityAllowlist: [] });
+});
+
+test("OpenCode catalog honors hidden model visibility and emits one provider prefix", async () => {
+  await settingsDb.updateSettings({
+    modelVisibilityAllowlist: [],
+    modelVisibilityDenylist: [],
+  });
+  const connectionId = await providersDb.createProviderConnection({
+    provider: "openai",
+    authType: "apikey",
+    name: "openai-opencode-catalog",
+    apiKey: "fixture-token-placeholder",
+    isActive: true,
+  });
+  const modelsDb = await import("../../src/lib/db/models.ts");
+  modelsDb.setModelIsHidden("openai", "gpt-4o-mini", true);
+  const featureFlagsDb = await import("../../src/lib/db/featureFlags.ts");
+  featureFlagsDb.setFeatureFlagOverride("MODELS_CATALOG_PREFIX_MODE", "dual");
+  try {
+    const models = await fetchOpenCodeCatalog();
+    const openaiIds = models
+      .map((model) => model.id)
+      .filter((id) => id.endsWith("/gpt-4o-mini"));
+
+    assert.deepEqual(openaiIds, [], "hidden model should not appear under any catalog prefix");
+    assert.ok(
+      models.some((model) => model.id.startsWith("oa/")),
+      "OpenCode should retain available models using the provider alias"
+    );
+    assert.ok(
+      !models.some((model) => model.id.startsWith("openai/")),
+      "OpenCode should not receive duplicate canonical-prefix rows"
+    );
+  } finally {
+    await providersDb.deleteProviderConnection(connectionId);
+    featureFlagsDb.removeFeatureFlagOverride("MODELS_CATALOG_PREFIX_MODE");
+  }
 });

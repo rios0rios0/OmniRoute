@@ -19,6 +19,7 @@ import { sanitizeErrorMessage } from "@omniroute/open-sse/utils/error";
 import { getSettings } from "@/lib/db/settings";
 import { getProviderConnections } from "@/lib/db/providers";
 import { isFreeModel, providerHasFreeModels } from "@/shared/utils/freeModels";
+import { upsertModelCatalogHealth } from "@/lib/db/modelCatalogHealth";
 import * as log from "@/sse/utils/logger";
 
 const CONSECUTIVE_RATE_LIMIT_STOP_THRESHOLD = 3;
@@ -225,6 +226,26 @@ export async function POST(request: Request) {
     }
 
     results[modelId] = entry;
+    upsertModelCatalogHealth({
+      providerId,
+      modelId,
+      status:
+        entry.status === "ok"
+          ? "working"
+          : entry.status === "slow"
+            ? "slow"
+            : entry.skipped
+              ? "skipped"
+              : entry.rateLimited
+                ? "rate_limited"
+                : "broken",
+      latencyMs: entry.latencyMs,
+      error: entry.error ?? null,
+      statusCode: entry.statusCode ?? null,
+      isQuota: entry.isQuota === true,
+      isTransient: entry.isTransient === true,
+      isTimeout: entry.isTimeout === true,
+    });
     log.info(
       "MODEL_TEST_ALL",
       `Tested ${modelId}: ${entry.status}${entry.rateLimited ? " (rate-limited)" : ""}${entry.isTimeout ? " (timeout)" : ""}`,

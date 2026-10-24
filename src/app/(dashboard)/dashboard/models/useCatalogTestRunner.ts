@@ -56,7 +56,41 @@ function useCatalogRunnerState() {
     // Stored results only exist in the browser, so load them after mount (the pattern
     // DashboardLayout uses for its sidebar state) to keep the first render equal to the SSR HTML.
     const timer = window.setTimeout(() => {
-      if (mountedRef.current) setTestResults(loadCatalogTestResults());
+      void (async () => {
+        const localResults = loadCatalogTestResults();
+        try {
+          await fetch("/api/models/health", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              results: Object.values(localResults).filter((result) => result.targetType === "model"),
+            }),
+          });
+          const response = await fetch("/api/models/health");
+          const payload = (await response.json()) as { results?: Array<Record<string, unknown>> };
+          const serverResults = Object.fromEntries(
+            (payload.results ?? []).flatMap((raw) => {
+              if (typeof raw.providerId !== "string" || typeof raw.modelId !== "string") return [];
+              const id = getModelTestKey(raw.providerId, raw.modelId);
+              const status = raw.status === "working" ? "ok" : raw.status === "slow" ? "slow" : "error";
+              return [[id, {
+                id,
+                targetType: "model" as const,
+                providerId: raw.providerId,
+                modelId: raw.modelId,
+                status,
+                latencyMs: typeof raw.latencyMs === "number" ? raw.latencyMs : 0,
+                testedAt: typeof raw.testedAt === "string" ? Date.parse(raw.testedAt) : 0,
+                ...(typeof raw.error === "string" ? { error: raw.error } : {}),
+                ...(typeof raw.statusCode === "number" ? { statusCode: raw.statusCode } : {}),
+              }]];
+            })
+          );
+          if (mountedRef.current) setTestResults({ ...localResults, ...serverResults });
+        } catch {
+          if (mountedRef.current) setTestResults(localResults);
+        }
+      })();
     }, 0);
     return () => {
       mountedRef.current = false;

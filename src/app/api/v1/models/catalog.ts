@@ -144,6 +144,10 @@ import { decideHidePaid } from "./catalogPaidFilter";
 import { isModelExposureAllowed } from "@/shared/utils/modelExposureList";
 import { isCodexDiscoveryModelExcluded } from "@/shared/services/codexDiscoveryPolicy";
 import { buildErrorBody } from "@omniroute/open-sse/utils/error";
+import {
+  isWorkingCatalogModel,
+  listWorkingModelCatalogHealth,
+} from "@/lib/db/modelCatalogHealth";
 
 // Public API of this module is preserved after the catalog helper extraction:
 // `isVisionModelId` (vision-detection-consistency.test.ts) and
@@ -338,10 +342,15 @@ async function buildUnifiedModelsResponseCore(
     const capabilityResolutionSnapshot = createModelCapabilityResolutionSnapshot();
     const { aliasToProviderId, providerIdToAlias } = buildAliasMaps();
     const _qp = new URL(request.url).searchParams.get("prefix");
+    const isOpenCodeClient =
+      request.headers.get("user-agent")?.toLowerCase().includes("opencode") ?? false;
+    const catalogPrefixMode = getModelsCatalogPrefixMode();
     const prefixMode =
-      _qp === "alias" || _qp === "canonical" || _qp === "dual" ? _qp : getModelsCatalogPrefixMode();
-    const includeAlias = prefixMode !== "canonical";
-    const includeCanonical = prefixMode !== "alias";
+      _qp === "alias" || _qp === "canonical" || _qp === "dual"
+        ? _qp
+        : isOpenCodeClient && catalogPrefixMode === "dual"
+          ? "alias"
+          : catalogPrefixMode;
     const modelsDevEffortTiers = isModelsDevEffortTiersEnabled(); // #15944, default off
     const resolveCanonicalProviderId = (aliasOrProviderId: string, fallbackProviderId?: string) =>
       resolveCanonicalProviderIdFromMaps(aliasToProviderId, aliasOrProviderId, fallbackProviderId);
@@ -377,6 +386,22 @@ async function buildUnifiedModelsResponseCore(
     // hidePaidModels — operator curation, not a cost signal.
     const shouldHideByExposure = (providerKey: string, modelId: string): boolean =>
       !isModelExposureAllowed(aliasToProviderId[providerKey] || providerKey, modelId, settings);
+    const workingCatalogHealth = listWorkingModelCatalogHealth();
+    // Once the operator has started health testing, the catalog becomes a
+    // server-owned curated catalog. Before the first run, preserve the legacy
+    // discovery behavior so a fresh installation can still be configured.
+    const requireWorkingCatalogHealth = workingCatalogHealth.length > 0;
+    // Curated catalog: one canonical prefix per provider. The default dual mode
+    // would advertise the same model under both `cl` and `cline` (and emit bare
+    // unprefixed codex ids), which reads as duplicates in OpenAI-compatible
+    // pickers. The short alias form is the canonical one here.
+    const effectivePrefixMode =
+      requireWorkingCatalogHealth && prefixMode === "dual" ? "alias" : prefixMode;
+    const includeAlias = effectivePrefixMode !== "canonical";
+    const includeCanonical = effectivePrefixMode !== "alias";
+    const shouldHideUntestedModel = (providerKey: string, candidates: string[]): boolean =>
+      requireWorkingCatalogHealth &&
+      !isWorkingCatalogModel(providerKey, candidates, workingCatalogHealth);
 
     // Get active provider connections
     let connections = [];
@@ -839,7 +864,7 @@ async function buildUnifiedModelsResponseCore(
     const listedIds = new Set<string>();
     const postFilterContext = {
       connections,
-      prefixMode,
+      prefixMode: effectivePrefixMode,
       aliasToProviderId,
       hideNoThinkVariants: settings.hideNoThinkVariants === true,
       blockedProviders: settings.blockedProviders,
@@ -902,6 +927,7 @@ async function buildUnifiedModelsResponseCore(
       // routable when sent explicitly, just not advertised in the catalog.
       if (hideAuto || autoCombosDisallowedForKey) break;
       if (blockedProviders.has("auto") || listedIds.has(autoId)) continue; // #5192
+      if (requireWorkingCatalogHealth) continue;
       // #6328 (follow-up to #6495 / #6512): REMOVE — not just hide — paid-tier
       // auto/* ids (auto/pro-* + auto/*:pro) from the advertised catalog when the
       // operator opts into hidePaidModels. The candidate-pool filter in
@@ -1120,6 +1146,7 @@ async function buildUnifiedModelsResponseCore(
         if (!isModelSelectable(canonicalProviderId, model.id)) continue;
         if (!providerSupportsModel(canonicalProviderId, model.id)) continue;
         const aliasId = `${alias}/${model.id}`;
+        if (shouldHideUntestedModel(canonicalProviderId, [model.id, aliasId])) continue;
         if (isModelHiddenBulk(alias, model.id, canonicalProviderId)) continue;
         if (isExcludedByProviderConnections(canonicalProviderId, model.id)) continue;
         if (shouldHidePaid(canonicalProviderId, model.id, (model as { pricing?: unknown }).pricing))
@@ -1271,6 +1298,17 @@ async function buildUnifiedModelsResponseCore(
           await maybeYieldCatalogBuild();
           if (!isUnifiedChatSourceModelSelectable(canonicalProviderId, sm)) continue;
           if (!providerSupportsModel(canonicalProviderId, sm.id)) continue;
+          const registryEntryForGate = REGISTRY[providerId];
+          const displayModelIdForGate =
+            registryEntryForGate?.modelIdPrefix &&
+            sm.id.startsWith(registryEntryForGate.modelIdPrefix)
+              ? sm.id.slice(registryEntryForGate.modelIdPrefix.length)
+              : sm.id;
+          const publishedIdForGate = `${alias}/${displayModelIdForGate}`;
+          if (
+            shouldHideUntestedModel(canonicalProviderId, [sm.id, publishedIdForGate])
+          )
+            continue;
           if (canonicalProviderId === "codex" && isCodexDiscoveryModelExcluded(sm)) {
             continue;
           }
@@ -1427,7 +1465,8 @@ async function buildUnifiedModelsResponseCore(
           );
           const modelType = getOpenRouterModelType(inputModalities, outputModalities);
           const isFree = isOpenRouterFreeModel(openRouterModel);
-          if (hidePaid && !isFree) continue;
+           if (hidePaid && !isFree) continue;
+           if (shouldHideUntestedModel("openrouter", [openRouterModel.id, qualifiedId])) continue;
           // #9293: respect per-model hidden flags (e.g. operator hid google/chirp-3
           // from the OpenRouter provider, so it should not appear in the live catalog).
           if (isModelHiddenBulk("openrouter", openRouterModel.id)) continue;
@@ -1735,6 +1774,8 @@ async function buildUnifiedModelsResponseCore(
           if (!modelId) continue;
           if (!isUnifiedChatSourceModelSelectable(canonicalProviderId, { ...model, id: modelId }))
             continue;
+          if (shouldHideUntestedModel(canonicalProviderId, [modelId, `${alias}/${modelId}`]))
+            continue;
           if (model.isHidden === true) continue;
           if (isModelHiddenBulk(providerId, modelId, canonicalProviderId)) continue;
           if (isExcludedByProviderConnections(canonicalProviderId, modelId)) continue;
@@ -1917,8 +1958,10 @@ async function buildUnifiedModelsResponseCore(
           continue;
         }
 
-        if (isModelHiddenBulk(providerKey, modelId, canonicalProviderId)) continue;
-        if (isExcludedByProviderConnections(canonicalProviderId, modelId)) continue;
+         if (isModelHiddenBulk(providerKey, modelId, canonicalProviderId)) continue;
+         if (isExcludedByProviderConnections(canonicalProviderId, modelId)) continue;
+         if (shouldHideUntestedModel(canonicalProviderId, [modelId, `${alias}/${modelId}`]))
+           continue;
         // #6328: apply hidePaidModels to alias-backed rows too. Alias mappings
         // point at providerKey/modelId with no pricing, so shouldHidePaid()
         // decides via the FREE_MODEL_IDS_BY_PROVIDER catalog tier.
@@ -1997,6 +2040,8 @@ async function buildUnifiedModelsResponseCore(
         if (!modelId) continue;
         if (isModelHiddenBulk(providerId, modelId, canonicalProviderId)) continue;
         if (isExcludedByProviderConnections(canonicalProviderId, modelId)) continue;
+        if (shouldHideUntestedModel(canonicalProviderId, [modelId, `${alias}/${modelId}`]))
+          continue;
         // #6328: apply hidePaidModels to managed-fallback rows too. Compatible
         // provider fallbacks lack pricing; shouldHidePaid() decides via the
         // FREE_MODEL_IDS_BY_PROVIDER catalog tier.
@@ -2066,6 +2111,25 @@ async function buildUnifiedModelsResponseCore(
     }
     // ?configuredOnly — hide models that have no eligible DB connection.
     finalModels = await applyCatalogPostFilters(request, finalModels, postFilterContext);
+    if (requireWorkingCatalogHealth) {
+      finalModels = finalModels.filter((model) => {
+        if (model.owned_by === "combo") return false;
+        if (model.type && model.type !== "chat") return true;
+        const provider = typeof model.owned_by === "string" ? model.owned_by : "";
+        const candidates = [model.id, model.root].filter(
+          (candidate): candidate is string => typeof candidate === "string" && candidate.length > 0
+        );
+        return Boolean(
+          provider && candidates.length > 0 && isWorkingCatalogModel(provider, candidates, workingCatalogHealth)
+        );
+      });
+      // Prefix every advertised display name with its provider so pickers that
+      // render `name` (ocode shows `name || id`) always show which provider the
+      // model belongs to — no more bare names inside the OmniRoute provider.
+      finalModels = finalModels.map((model) =>
+        typeof model.id === "string" ? { ...model, name: model.id } : model
+      );
+    }
 
     const getDefaultContextFallback = (model: any): number | undefined => {
       if (typeof model.context_length === "number") return undefined;

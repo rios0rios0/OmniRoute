@@ -8,6 +8,7 @@ import { isModelEndpointCapabilityGateEnabled } from "@/lib/providerModels/endpo
 import { sanitizeErrorMessage } from "@omniroute/open-sse/utils/error.ts";
 import { getSettings } from "@/lib/db/settings";
 import { isFreeModel, providerHasFreeModels } from "@/shared/utils/freeModels";
+import { upsertModelCatalogHealth } from "@/lib/db/modelCatalogHealth";
 
 const testModelSchema = z.object({
   providerId: z.string().min(1),
@@ -93,6 +94,26 @@ export async function POST(request: Request) {
           ? NVIDIA_SINGLE_TEST_TIMEOUT_MS
           : DEFAULT_MODEL_TEST_TIMEOUT_MS,
       streamChat: true,
+    });
+    upsertModelCatalogHealth({
+      providerId,
+      modelId,
+      status:
+        result.status === "ok"
+          ? "working"
+          : result.status === "rate_limited"
+            ? "rate_limited"
+            : result.status === "slow"
+              ? "slow"
+              : result.skipped
+                ? "skipped"
+                : "broken",
+      latencyMs: result.latencyMs,
+      error: result.error ?? null,
+      statusCode: result.statusCode ?? null,
+      isQuota: result.isQuota === true,
+      isTransient: result.isTransient === true,
+      isTimeout: result.isTimeout === true,
     });
 
     if (result.status === "ok") {

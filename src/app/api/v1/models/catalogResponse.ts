@@ -147,7 +147,9 @@ export async function applyCatalogPostFilters(
     ctx.authorizeSyntheticModel ?? (await resolveCatalogVariantAuthorizer(request));
 
   // variants are only generated for surviving models.
-  if (new URL(request.url).searchParams.get("configuredOnly") === "true") {
+  const isOpenCodeClient =
+    request.headers.get("user-agent")?.toLowerCase().includes("opencode") ?? false;
+  if (new URL(request.url).searchParams.get("configuredOnly") === "true" || isOpenCodeClient) {
     finalModels = finalModels.filter((m) => {
       if (!m.root) return true;
       return hasEligibleConnectionForModel(ctx.connections, m.root);
