@@ -12,7 +12,6 @@ const {
   getBarColor,
   worstStatus,
 } = utils;
-
 const PROVIDER_LIMITS_DIR = join(
   process.cwd(),
   "src/app/(dashboard)/dashboard/usage/components/ProviderLimits"
@@ -94,6 +93,26 @@ test("OpenRouter still reports critical when a free request window is exhausted"
 
   // then
   assert.equal(status, "critical");
+});
+
+test("Provider Quota summary ignores an empty OpenRouter credit balance", () => {
+  // given
+  const quotas = [
+    { name: "free_daily", remainingPercentage: 100 },
+    { name: "free_rpm", remainingPercentage: 100 },
+    { name: "credits", remainingPercentage: 0, unlimited: true, isCredits: true },
+  ];
+
+  // when
+  const status = worstStatus(quotas, "openrouter");
+
+  // then
+  assert.equal(status, "ok");
+});
+
+test("Provider Quota summary passes provider identity to shared status classification", () => {
+  const source = readFileSync(join(PROVIDER_LIMITS_DIR, "index.tsx"), "utf8");
+  assert.match(source, /worstStatus\(visibleQuotaData\[conn\.id\]\?\.quotas, conn\.provider\)/);
 });
 
 test("the contradictory 70/30 helpers are gone from ProviderLimits/utils", () => {
