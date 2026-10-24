@@ -9,11 +9,11 @@ import {
   formatCountdown,
   normalizePlanTier,
   buildProviderLimitsResolvedPlans,
-  calculatePercentage,
   matchesProviderFilter,
   buildProviderOptions,
   compareQuotaConnections,
   quotaStatusLevel,
+  worstStatus,
 } from "./utils";
 import Card from "@/shared/components/Card";
 import { CardSkeleton } from "@/shared/components/Loading";
@@ -70,18 +70,6 @@ function getPurchaseType(authType: string | undefined, tierKey: string): Purchas
     return "oauth-sub";
   }
   return "oauth-free";
-}
-
-function getWorstStatus(quotas: any[] | undefined): StatusKey {
-  if (!quotas || quotas.length === 0) return "empty";
-  let worst: "ok" | "alert" = "ok";
-  for (const q of quotas) {
-    const pct = q.unlimited ? 100 : (q.remainingPercentage ?? calculatePercentage(q.used, q.total));
-    const level = quotaStatusLevel(pct);
-    if (level === "critical") return "critical";
-    if (level === "alert" && worst === "ok") worst = "alert";
-  }
-  return worst;
 }
 
 function getSoonestResetMs(quotas: any[] | undefined): number {
@@ -595,7 +583,7 @@ export default function ProviderLimits({
   const statusByConnection = useMemo(() => {
     const out: Record<string, StatusKey> = {};
     for (const conn of sortedConnections) {
-      out[conn.id] = getWorstStatus(visibleQuotaData[conn.id]?.quotas);
+      out[conn.id] = worstStatus(visibleQuotaData[conn.id]?.quotas, conn.provider);
     }
     return out;
   }, [sortedConnections, visibleQuotaData]);
