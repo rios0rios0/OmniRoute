@@ -55,6 +55,21 @@ function toHeaderValue(value: string): string {
   return encodeURIComponent(toWellFormedUnicode(withoutControls));
 }
 
+/**
+ * The connection display name doubles as the operator's account label, and OAuth
+ * imports seed it with the account email. The routed-connection header must never
+ * expose an email, so an email-shaped label keeps its first three characters and
+ * masks the rest with asterisks (length preserved); every other label passes
+ * through untouched.
+ */
+const EMAIL_SHAPED_CONNECTION_NAME = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function maskEmailShapedConnectionName(value: string): string {
+  if (!EMAIL_SHAPED_CONNECTION_NAME.test(value)) return value;
+  const visible = value.slice(0, 3);
+  return `${visible}${"*".repeat(value.length - visible.length)}`;
+}
+
 export function getOmniRouteTokenCounts(usage: UsageLike): { input: number; output: number } {
   if (!usage || typeof usage !== "object") {
     return { input: 0, output: 0 };
@@ -182,7 +197,9 @@ export function buildOmniRouteResponseMetaHeaders({
   }
 
   if (typeof connectionName === "string" && connectionName.trim().length > 0) {
-    headers[OMNIROUTE_RESPONSE_HEADERS.connectionName] = toHeaderValue(connectionName.trim());
+    headers[OMNIROUTE_RESPONSE_HEADERS.connectionName] = toHeaderValue(
+      maskEmailShapedConnectionName(connectionName.trim())
+    );
   }
 
   // Cache-saved cost: emitted only when the caller passes a value (cache HITs), so

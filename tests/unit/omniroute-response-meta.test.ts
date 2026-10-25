@@ -78,6 +78,27 @@ test("buildOmniRouteResponseMetaHeaders omits a missing or blank connection disp
   assert.equal(blank[OMNIROUTE_RESPONSE_HEADERS.connectionName], undefined);
 });
 
+test("buildOmniRouteResponseMetaHeaders masks email-shaped connection display names", () => {
+  // given
+  const headers = buildOmniRouteResponseMetaHeaders({
+    connectionName: "ca.felipe.rios@outlook.com",
+  });
+
+  // when / then
+  assert.equal(headers[OMNIROUTE_RESPONSE_HEADERS.connectionName], "ca.***********************");
+  assert.doesNotThrow(() => new Headers(headers));
+});
+
+test("buildOmniRouteResponseMetaHeaders keeps non-email connection display names intact", () => {
+  // given
+  const headers = buildOmniRouteResponseMetaHeaders({
+    connectionName: "Work Key",
+  });
+
+  // when / then
+  assert.equal(headers[OMNIROUTE_RESPONSE_HEADERS.connectionName], "Work Key");
+});
+
 test("buildOmniRouteResponseMetaHeaders percent-encodes non-ASCII model header values", () => {
   const model = "free-mix/[假流式]gemini-3.7-flash";
   const headers = buildOmniRouteResponseMetaHeaders({

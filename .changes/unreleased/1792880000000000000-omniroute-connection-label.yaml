@@ -1,3 +1,3 @@
 kind: "Added"
-body: "added the privacy-safe `X-OmniRoute-Connection-Name` response header for the configured display name of the connection that served chat responses; the header is omitted when no display name is configured and never exposes email, connection IDs, API-key IDs, or credentials"
+body: "added the `X-OmniRoute-Connection-Name` response header carrying the configured display name of the connection that served chat responses, configurable through `displayName` on `PUT /api/providers/{id}`; the header is omitted when unset and masks email-shaped labels to their first three characters so it never exposes a raw email, connection IDs, API-key IDs, or credentials"
 time: "2026-10-24T22:00:00.000Z"

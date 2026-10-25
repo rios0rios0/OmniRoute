@@ -1587,9 +1587,10 @@ paths:
               schema:
                 type: string
               description: >-
-                Configured privacy-safe display name of the provider connection that served the
-                response. Omitted when no display name is configured; never an email, connection
-                ID, API-key ID, or credential.
+                Configured display name of the provider connection that served the response
+                (displayName on PUT /api/providers/{id}). Omitted when unset; email-shaped
+                labels are masked to their first three characters so the header never carries
+                a raw email, connection ID, API-key ID, or credential.
             X-OmniRoute-Latency-Ms:
               schema:
                 type: string
@@ -2372,6 +2373,28 @@ paths:
       responses:
         "200":
           description: Updated provider
+    put:
+      tags: [Providers]
+      summary: Update provider connection
+      description: >-
+        Partial update of a provider connection. `displayName` is the operator-facing label
+        surfaced as the X-OmniRoute-Connection-Name response header; email-shaped labels are
+        masked to their first three characters in the header.
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProviderConnectionUpdate"
+      responses:
+        "200":
+          description: Updated provider connection
+        "400":
+          description: Invalid update payload
+        "404":
+          description: Provider not found
     delete:
       tags: [Providers]
       summary: Delete provider connection
@@ -16271,6 +16294,28 @@ components:
           type: integer
           nullable: true
           minimum: 0
+
+    ProviderConnectionUpdate:
+      type: object
+      description: Partial update of a provider connection. Omitted fields are left unchanged.
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        displayName:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: >-
+            Operator-facing label for this connection, surfaced as the
+            X-OmniRoute-Connection-Name response header. Email-shaped labels are masked to their
+            first three characters in the header. Send null to clear the label.
+        isActive:
+          type: boolean
+        defaultModel:
+          type: string
+          nullable: true
+          maxLength: 200
 
     ApiKey:
       type: object

@@ -143,6 +143,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const body = validation.data;
     const {
       name,
+      displayName,
       priority,
       globalPriority,
       defaultModel,
@@ -177,6 +178,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     const updateData: Record<string, any> = {};
     if (name !== undefined) updateData.name = name;
+    // Privacy-safe account label surfaced as X-OmniRoute-Connection-Name on routed responses.
+    // `null` clears it; the header builder masks email-shaped values before emitting them.
+    if (displayName !== undefined) updateData.displayName = displayName;
     if (priority !== undefined) updateData.priority = priority;
     if (globalPriority !== undefined) updateData.globalPriority = globalPriority;
     if (defaultModel !== undefined) updateData.defaultModel = defaultModel;
