@@ -59,7 +59,7 @@ test("buildOmniRouteResponseMetaHeaders keeps ASCII model header values unchange
   assert.equal(headers[OMNIROUTE_RESPONSE_HEADERS.model], "gpt-4o-mini");
 });
 
-test("buildOmniRouteResponseMetaHeaders emits only the configured connection display name", () => {
+test("buildOmniRouteResponseMetaHeaders emits only the configured connection name", () => {
   // given
   const headers = buildOmniRouteResponseMetaHeaders({ connectionName: "  Personal Work  " });
 
@@ -68,7 +68,7 @@ test("buildOmniRouteResponseMetaHeaders emits only the configured connection dis
   assert.doesNotThrow(() => new Headers(headers));
 });
 
-test("buildOmniRouteResponseMetaHeaders omits a missing or blank connection display name", () => {
+test("buildOmniRouteResponseMetaHeaders omits a missing or blank connection name", () => {
   // given / when
   const missing = buildOmniRouteResponseMetaHeaders({});
   const blank = buildOmniRouteResponseMetaHeaders({ connectionName: "  " });
@@ -78,18 +78,46 @@ test("buildOmniRouteResponseMetaHeaders omits a missing or blank connection disp
   assert.equal(blank[OMNIROUTE_RESPONSE_HEADERS.connectionName], undefined);
 });
 
-test("buildOmniRouteResponseMetaHeaders masks email-shaped connection display names", () => {
+test("buildOmniRouteResponseMetaHeaders masks email-shaped connection names", () => {
   // given
-  const headers = buildOmniRouteResponseMetaHeaders({
-    connectionName: "ca.felipe.rios@outlook.com",
-  });
+  const email = "ca.felipe.rios@outlook.com";
+  const headers = buildOmniRouteResponseMetaHeaders({ connectionName: email });
 
-  // when / then
-  assert.equal(headers[OMNIROUTE_RESPONSE_HEADERS.connectionName], "ca.***********************");
+  // when / then — only the email is masked: first 3 chars visible, rest asterisks
+  assert.equal(
+    headers[OMNIROUTE_RESPONSE_HEADERS.connectionName],
+    `ca.${"*".repeat(email.length - 3)}`
+  );
   assert.doesNotThrow(() => new Headers(headers));
 });
 
-test("buildOmniRouteResponseMetaHeaders keeps non-email connection display names intact", () => {
+test("buildOmniRouteResponseMetaHeaders masks names that embed an email label", () => {
+  // given
+  const label = "NVIDIA NIM (rios0rios0@outlook.com)";
+  const headers = buildOmniRouteResponseMetaHeaders({ connectionName: label });
+
+  // when / then — the surrounding label stays readable; only the email is masked
+  const value = headers[OMNIROUTE_RESPONSE_HEADERS.connectionName];
+  assert.equal(value, `NVIDIA NIM (rio${"*".repeat("rios0rios0@outlook.com".length - 3)})`);
+  assert.equal(value.length, label.length);
+  assert.doesNotThrow(() => new Headers(headers));
+});
+
+test("buildOmniRouteResponseMetaHeaders masks every email embedded in a label", () => {
+  // given
+  const headers = buildOmniRouteResponseMetaHeaders({
+    connectionName: "Work (a@b.io) and Personal (carlos@corp.example.com)",
+  });
+
+  // when / then
+  assert.equal(
+    headers[OMNIROUTE_RESPONSE_HEADERS.connectionName],
+    `Work (a@b${"*".repeat(3)}) and Personal (car${"*".repeat("carlos@corp.example.com".length - 3)})`
+  );
+  assert.doesNotThrow(() => new Headers(headers));
+});
+
+test("buildOmniRouteResponseMetaHeaders keeps non-email connection names intact", () => {
   // given
   const headers = buildOmniRouteResponseMetaHeaders({
     connectionName: "Work Key",

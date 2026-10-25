@@ -590,8 +590,9 @@ function rateLimitOverridePositiveInt(max: number) {
 export const updateProviderConnectionSchema = z
   .object({
     name: z.string().max(200).optional(),
-    // Privacy-safe account label surfaced as X-OmniRoute-Connection-Name on routed
-    // responses; the header builder masks email-shaped values before emitting them.
+    // Operator-facing connection label surfaced as X-OmniRoute-Connection-Name on routed
+    // responses; the header builder masks email-shaped values before emitting them,
+    // including labels that embed an email (e.g. "NVIDIA NIM (user@example.com)").
     displayName: z.union([z.string().max(200), z.null()]).optional(),
     // #6562: `priority` is auto-incremented on connection creation
     // (src/lib/db/providers.ts::createProviderConnection — `MAX(priority)+1` per

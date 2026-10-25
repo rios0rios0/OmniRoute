@@ -1587,10 +1587,11 @@ paths:
               schema:
                 type: string
               description: >-
-                Configured display name of the provider connection that served the response
-                (displayName on PUT /api/providers/{id}). Omitted when unset; email-shaped
-                labels are masked to their first three characters so the header never carries
-                a raw email, connection ID, API-key ID, or credential.
+                Configured `name` of the provider connection that served the response
+                (name on PUT /api/providers/{id}). Omitted when unset; only the email
+                embedded in the label is masked (its first three characters stay
+                visible) so the header never carries a raw email, connection ID,
+                API-key ID, or credential.
             X-OmniRoute-Latency-Ms:
               schema:
                 type: string
@@ -2377,9 +2378,9 @@ paths:
       tags: [Providers]
       summary: Update provider connection
       description: >-
-        Partial update of a provider connection. `displayName` is the operator-facing label
-        surfaced as the X-OmniRoute-Connection-Name response header; email-shaped labels are
-        masked to their first three characters in the header.
+        Partial update of a provider connection. `name` is the operator-facing label
+        surfaced as the X-OmniRoute-Connection-Name response header; only the email
+        embedded in the label is masked (its first three characters stay visible).
       parameters:
         - $ref: "#/components/parameters/ResourceId"
       requestBody:
@@ -16308,8 +16309,8 @@ components:
           maxLength: 200
           description: >-
             Operator-facing label for this connection, surfaced as the
-            X-OmniRoute-Connection-Name response header. Email-shaped labels are masked to their
-            first three characters in the header. Send null to clear the label.
+            X-OmniRoute-Connection-Name response header. Only the email embedded in the
+            label is masked (its first three characters stay visible). Send null to clear the label.
         isActive:
           type: boolean
         defaultModel:

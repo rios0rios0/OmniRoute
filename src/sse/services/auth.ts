@@ -982,6 +982,7 @@ async function materializeConnection(
     providerSpecificData,
     id: connection.id,
     provider: connection.provider,
+    name: connection.name,
     displayName: connection.displayName,
     authType: connection.authType,
     email: connection.email,
