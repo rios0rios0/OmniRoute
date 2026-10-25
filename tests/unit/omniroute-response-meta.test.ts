@@ -59,6 +59,25 @@ test("buildOmniRouteResponseMetaHeaders keeps ASCII model header values unchange
   assert.equal(headers[OMNIROUTE_RESPONSE_HEADERS.model], "gpt-4o-mini");
 });
 
+test("buildOmniRouteResponseMetaHeaders emits only the configured connection display name", () => {
+  // given
+  const headers = buildOmniRouteResponseMetaHeaders({ connectionName: "  Personal Work  " });
+
+  // when / then
+  assert.equal(headers[OMNIROUTE_RESPONSE_HEADERS.connectionName], "Personal Work");
+  assert.doesNotThrow(() => new Headers(headers));
+});
+
+test("buildOmniRouteResponseMetaHeaders omits a missing or blank connection display name", () => {
+  // given / when
+  const missing = buildOmniRouteResponseMetaHeaders({});
+  const blank = buildOmniRouteResponseMetaHeaders({ connectionName: "  " });
+
+  // then
+  assert.equal(missing[OMNIROUTE_RESPONSE_HEADERS.connectionName], undefined);
+  assert.equal(blank[OMNIROUTE_RESPONSE_HEADERS.connectionName], undefined);
+});
+
 test("buildOmniRouteResponseMetaHeaders percent-encodes non-ASCII model header values", () => {
   const model = "free-mix/[假流式]gemini-3.7-flash";
   const headers = buildOmniRouteResponseMetaHeaders({

@@ -48,6 +48,12 @@ test("buildStreamingResponseHeaders receives zeroed latency/usage/cost and cache
   assert.equal(calls[0].meta.model, "gpt-x");
 });
 
+test("buildStreamingResponseHeaders receives the selected connection display name", () => {
+  const { build, calls } = makeBuild();
+  assembleStreamingResponseHeaders(baseArgs({ connectionName: "Work Key" }), build);
+  assert.equal(calls[0].meta.connectionName, "Work Key");
+});
+
 test("no compression meta → no compression header", () => {
   const { build } = makeBuild();
   const h = assembleStreamingResponseHeaders(

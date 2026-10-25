@@ -5,6 +5,7 @@ export const OMNIROUTE_RESPONSE_HEADERS = {
   cacheSimilarity: "X-OmniRoute-Cache-Similarity",
   savingsTokens: "X-OmniRoute-Savings-Tokens",
   compression: "X-OmniRoute-Compression",
+  connectionName: "X-OmniRoute-Connection-Name",
   costSaved: "X-OmniRoute-Cost-Saved",
   decision: "X-OmniRoute-Decision",
   emergencyFallback: "X-OmniRoute-Emergency-Fallback",

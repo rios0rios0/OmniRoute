@@ -124,6 +124,7 @@ export function buildOmniRouteResponseMetaHeaders({
   latencyMs = 0,
   model = null,
   provider = null,
+  connectionName = null,
   requestId = null,
   strategy = null,
   usage = null,
@@ -143,6 +144,7 @@ export function buildOmniRouteResponseMetaHeaders({
   latencyMs?: unknown;
   model?: string | null;
   provider?: string | null;
+  connectionName?: string | null;
   requestId?: string | null;
   /**
    * Routing decision (combo strategy name, or `"single"` for a non-combo
@@ -177,6 +179,10 @@ export function buildOmniRouteResponseMetaHeaders({
 
   if (typeof provider === "string" && provider.trim().length > 0) {
     headers[OMNIROUTE_RESPONSE_HEADERS.provider] = toHeaderValue(getProviderAlias(provider));
+  }
+
+  if (typeof connectionName === "string" && connectionName.trim().length > 0) {
+    headers[OMNIROUTE_RESPONSE_HEADERS.connectionName] = toHeaderValue(connectionName.trim());
   }
 
   // Cache-saved cost: emitted only when the caller passes a value (cache HITs), so

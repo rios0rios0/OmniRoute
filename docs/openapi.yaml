@@ -1583,6 +1583,13 @@ paths:
               schema:
                 type: string
               description: Resolved provider alias.
+            X-OmniRoute-Connection-Name:
+              schema:
+                type: string
+              description: >-
+                Configured privacy-safe display name of the provider connection that served the
+                response. Omitted when no display name is configured; never an email, connection
+                ID, API-key ID, or credential.
             X-OmniRoute-Latency-Ms:
               schema:
                 type: string
