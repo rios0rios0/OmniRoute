@@ -1011,6 +1011,7 @@ export async function runNonStreamingResponse(deps: NonStreamingDeps) {
     const responseHeaders = buildNonStreamingResponseHeaders({
       provider,
       model: responseModel,
+      connectionName: credentials?.displayName ?? null,
       startTime,
       responseUsage,
       estimatedCost,

@@ -66,25 +66,26 @@ Content-Type: application/json
 
 ### Custom Headers
 
-| Header                   | Direction | Description                                                                                                                                                                                        |
-| ------------------------ | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `X-OmniRoute-No-Cache`   | Request   | Set to `true` to bypass cache                                                                                                                                                                      |
-| `x-omniroute-no-memory`  | Request   | Set to `true` to skip memory + skills injection for this request (mirrors no-cache; avoids the per-call token/cost overhead)                                                                       |
-| `X-OmniRoute-Progress`   | Request   | Set to `true` for progress events                                                                                                                                                                  |
-| `X-Session-Id`           | Request   | Sticky session key for external session affinity                                                                                                                                                   |
-| `x_session_id`           | Request   | Underscore variant also accepted (direct HTTP)                                                                                                                                                     |
-| `X-OmniRoute-Session-Id` | Request   | Caller-supplied session/conversation tag (also feeds memory). When present, persisted verbatim to `call_logs.session_tag` for per-session cost attribution (#8249) — never synthesized when absent |
-| `Idempotency-Key`        | Request   | Dedup key (5s window)                                                                                                                                                                              |
-| `X-Request-Id`           | Request   | Alternative dedup key                                                                                                                                                                              |
-| `x-omniroute-connection` | Request   | Pin a single-model request to one provider connection (account) by its id — see [Account pinning per request](#account-pinning-per-request)                                                        |
-| `X-OmniRoute-Cache`      | Response  | `HIT` or `MISS` (non-streaming)                                                                                                                                                                    |
-| `X-OmniRoute-Idempotent` | Response  | `true` if deduplicated                                                                                                                                                                             |
-| `X-OmniRoute-Progress`   | Response  | `enabled` if progress tracking on                                                                                                                                                                  |
-| `X-OmniRoute-Session-Id` | Response  | Effective session ID used by OmniRoute                                                                                                                                                             |
-| `X-OmniRoute-Request-Id` | Response  | Request correlation id (when known)                                                                                                                                                                |
-| `X-OmniRoute-Version`    | Response  | OmniRoute build version (always present)                                                                                                                                                           |
-| `X-OmniRoute-Cost-Saved` | Response  | USD the cache avoided on a HIT (cache hits only)                                                                                                                                                   |
-| `X-OmniRoute-Decision`   | Response  | Routing trace: `strategy=<name>; provider=<alias>; latency_ms=<n>` (`<name>` is the combo strategy, or `single` for a non-combo request) — always present on completion responses                  |
+| Header                        | Direction | Description                                                                                                                                                                                        |
+| ----------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `X-OmniRoute-No-Cache`        | Request   | Set to `true` to bypass cache                                                                                                                                                                      |
+| `x-omniroute-no-memory`       | Request   | Set to `true` to skip memory + skills injection for this request (mirrors no-cache; avoids the per-call token/cost overhead)                                                                       |
+| `X-OmniRoute-Progress`        | Request   | Set to `true` for progress events                                                                                                                                                                  |
+| `X-Session-Id`                | Request   | Sticky session key for external session affinity                                                                                                                                                   |
+| `x_session_id`                | Request   | Underscore variant also accepted (direct HTTP)                                                                                                                                                     |
+| `X-OmniRoute-Session-Id`      | Request   | Caller-supplied session/conversation tag (also feeds memory). When present, persisted verbatim to `call_logs.session_tag` for per-session cost attribution (#8249) — never synthesized when absent |
+| `Idempotency-Key`             | Request   | Dedup key (5s window)                                                                                                                                                                              |
+| `X-Request-Id`                | Request   | Alternative dedup key                                                                                                                                                                              |
+| `x-omniroute-connection`      | Request   | Pin a single-model request to one provider connection (account) by its id — see [Account pinning per request](#account-pinning-per-request)                                                        |
+| `X-OmniRoute-Cache`           | Response  | `HIT` or `MISS` (non-streaming)                                                                                                                                                                    |
+| `X-OmniRoute-Idempotent`      | Response  | `true` if deduplicated                                                                                                                                                                             |
+| `X-OmniRoute-Progress`        | Response  | `enabled` if progress tracking on                                                                                                                                                                  |
+| `X-OmniRoute-Session-Id`      | Response  | Effective session ID used by OmniRoute                                                                                                                                                             |
+| `X-OmniRoute-Request-Id`      | Response  | Request correlation id (when known)                                                                                                                                                                |
+| `X-OmniRoute-Version`         | Response  | OmniRoute build version (always present)                                                                                                                                                           |
+| `X-OmniRoute-Connection-Name` | Response  | Configured display name of the connection that served the response; email-shaped labels are masked to their first three characters. Never a raw email, connection ID, API-key ID, or credential.   |
+| `X-OmniRoute-Cost-Saved`      | Response  | USD the cache avoided on a HIT (cache hits only)                                                                                                                                                   |
+| `X-OmniRoute-Decision`        | Response  | Routing trace: `strategy=<name>; provider=<alias>; latency_ms=<n>` (`<name>` is the combo strategy, or `single` for a non-combo request) — always present on completion responses                  |
 
 > Nginx note: if you rely on underscore headers (for example `x_session_id`), enable `underscores_in_headers on;`.
 
@@ -1160,6 +1161,11 @@ ordinary inference API keys. Credential families, scopes, and curl examples:
 | `/api/provider-nodes*`                  | Various                   | Provider node management                                                                                                                                  |
 | `/api/provider-models`                  | GET/POST/PUT/PATCH/DELETE | Custom models and per-model overrides (add, update, hide/show, delete)                                                                                    |
 | `/api/provider-models/validate-and-add` | POST                      | Management-authenticated, opt-in strict-connection validation and atomic custom-model registration; see [Model validation](../guides/MODEL-VALIDATION.md) |
+
+`PUT /api/providers/<connection-id>` accepts a `displayName` (max 200 characters) that labels the
+connection for operators. The label is echoed back as the `X-OmniRoute-Connection-Name` response
+header on requests routed through that connection; send `null` to clear it. Email-shaped labels are
+masked to their first three characters in the header, so the header never carries a raw email.
 
 For synced/imported models, `PUT /api/provider-models` accepts `provider`, `modelId`, and
 `maxOutputTokenOverride`: a positive integer sets the manual output-token cap, and `null`

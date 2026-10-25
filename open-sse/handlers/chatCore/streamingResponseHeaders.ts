@@ -15,6 +15,7 @@ export function assembleStreamingResponseHeaders(
   args: {
     providerHeaders: Headers;
     provider: string | null | undefined;
+    connectionName?: string | null;
     model: string | null | undefined;
     pendingRequestId: string;
     compressionResponseMeta?: string | null | undefined;
@@ -33,6 +34,7 @@ export function assembleStreamingResponseHeaders(
   const responseHeaders: Record<string, string> = {
     ...buildStreamingResponseHeaders(args.providerHeaders, {
       provider: args.provider,
+      connectionName: args.connectionName,
       model: args.model,
       cacheHit: false,
       latencyMs: 0,

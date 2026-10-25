@@ -14,6 +14,7 @@ import { attachOmniRouteMetaHeaders as defaultAttachMeta } from "@/domain/omniro
 export function buildNonStreamingResponseHeaders(
   args: {
     provider: string | null | undefined;
+    connectionName?: string | null;
     model: string | null | undefined;
     startTime: number;
     responseUsage: Record<string, unknown> | null | undefined;
@@ -34,6 +35,7 @@ export function buildNonStreamingResponseHeaders(
   };
   deps.attachOmniRouteMetaHeaders(responseHeaders, {
     provider: args.provider,
+    connectionName: args.connectionName,
     model: args.model,
     cacheHit: false,
     latencyMs: deps.now() - args.startTime,

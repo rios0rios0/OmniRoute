@@ -41,6 +41,7 @@ function toNullableNumber(value: unknown): number | null {
 export interface ProviderConnectionView {
   id: string;
   provider: string;
+  displayName: string | null;
   authType: string | null;
   email: string | null;
   isActive: boolean;
@@ -94,6 +95,7 @@ export function toProviderConnection(value: unknown): ProviderConnectionView {
   return {
     id: toStringOrNull(row.id) || "",
     provider: toStringOrNull(row.provider) || "",
+    displayName: toStringOrNull(row.displayName),
     authType: toStringOrNull(row.authType),
     email: toStringOrNull(row.email),
     isActive: row.isActive === true,

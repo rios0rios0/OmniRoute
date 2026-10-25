@@ -70,6 +70,13 @@ test("meta receives provider/model/cacheHit false/latency/usage/cost/requestId",
   assert.equal(meta.requestId, "req-1");
 });
 
+test("meta receives the configured connection display name", () => {
+  const { deps, metaCalls } = makeDeps();
+  buildNonStreamingResponseHeaders(baseArgs({ connectionName: "Work Key" }), deps);
+  assert.equal(metaCalls[0].meta.connectionName, "Work Key");
+  assert.equal("connectionId" in metaCalls[0].meta, false);
+});
+
 test("no compression meta → no compression header", () => {
   const { deps } = makeDeps();
   const h = buildNonStreamingResponseHeaders(
