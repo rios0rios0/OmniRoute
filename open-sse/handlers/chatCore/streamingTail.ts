@@ -322,7 +322,7 @@ export async function runStreamingTail(deps: StreamingTailDeps) {
     providerHeaders: providerResponse.headers,
     provider,
     model: responseModel,
-    connectionName: credentials?.displayName ?? null,
+    connectionName: credentials?.name ?? null,
     pendingRequestId,
     compressionResponseMeta,
     comboStrategy,

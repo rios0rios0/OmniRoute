@@ -56,18 +56,23 @@ function toHeaderValue(value: string): string {
 }
 
 /**
- * The connection display name doubles as the operator's account label, and OAuth
- * imports seed it with the account email. The routed-connection header must never
- * expose an email, so an email-shaped label keeps its first three characters and
- * masks the rest with asterisks (length preserved); every other label passes
- * through untouched.
+ * The connection `name` doubles as the operator's account label (the dashboard
+ * rename UI writes to `name`, not `displayName`), and OAuth imports seed it with
+ * the account email — e.g. `"NVIDIA NIM (ca.felipe.rios@outlook.com)"`. The
+ * routed-connection header must never expose an email, so only the email token
+ * is masked: its first three characters stay visible and the rest of the email
+ * becomes asterisks (email length preserved). Everything before or after the
+ * email in the label passes through untouched, which keeps the operator-chosen
+ * context readable — `"NVIDIA NIM (ca.**********************)"`. A label with
+ * no email-like token is returned unchanged.
  */
-const EMAIL_SHAPED_CONNECTION_NAME = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_TOKEN = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 
 function maskEmailShapedConnectionName(value: string): string {
-  if (!EMAIL_SHAPED_CONNECTION_NAME.test(value)) return value;
-  const visible = value.slice(0, 3);
-  return `${visible}${"*".repeat(value.length - visible.length)}`;
+  return value.replace(EMAIL_TOKEN, (email) => {
+    const visible = email.slice(0, 3);
+    return `${visible}${"*".repeat(email.length - visible.length)}`;
+  });
 }
 
 export function getOmniRouteTokenCounts(usage: UsageLike): { input: number; output: number } {
