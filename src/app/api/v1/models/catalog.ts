@@ -159,6 +159,7 @@ const REDUNDANT_MODEL_NAME_PREFIXES: Record<string, string[]> = {
   "cloudflare-ai": ["@cf"],
   clinepass: ["cline-pass"],
   nvidia: ["nvidia"],
+  openrouter: ["openrouter"],
 };
 
 function sanitizeCatalogModelName(providerId: string, fullId: string): string {
