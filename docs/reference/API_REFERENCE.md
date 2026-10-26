@@ -83,7 +83,7 @@ Content-Type: application/json
 | `X-OmniRoute-Session-Id`      | Response  | Effective session ID used by OmniRoute                                                                                                                                                             |
 | `X-OmniRoute-Request-Id`      | Response  | Request correlation id (when known)                                                                                                                                                                |
 | `X-OmniRoute-Version`         | Response  | OmniRoute build version (always present)                                                                                                                                                           |
-| `X-OmniRoute-Connection-Name` | Response  | Configured `name` of the connection that served the response (set via `name` on `PUT /api/providers/{id}`); only the email embedded in the label is masked (its first three characters stay visible). Never a raw email, connection ID, API-key ID, or credential.   |
+| `X-OmniRoute-Connection-Name` | Response  | Account label of the connection that served the response: `name` → `displayName` → `email` (first two set via `name` on `PUT /api/providers/{id}`); only the email embedded in the label is masked (its first three characters stay visible). Never a raw email, connection ID, API-key ID, or credential. Omitted only when the connection carries no label at all. |
 | `X-OmniRoute-Cost-Saved`      | Response  | USD the cache avoided on a HIT (cache hits only)                                                                                                                                                   |
 | `X-OmniRoute-Decision`        | Response  | Routing trace: `strategy=<name>; provider=<alias>; latency_ms=<n>` (`<name>` is the combo strategy, or `single` for a non-combo request) — always present on completion responses                  |
 
@@ -1164,9 +1164,13 @@ ordinary inference API keys. Credential families, scopes, and curl examples:
 
 `PUT /api/providers/<connection-id>` accepts a `name` (max 200 characters) that labels the
 connection for operators. The label is echoed back as the `X-OmniRoute-Connection-Name` response
-header on requests routed through that connection; send `null` to clear it. Only the email embedded
-in the label is masked — its first three characters stay visible and the rest becomes asterisks —
-so the header never carries a raw email, while the operator-chosen label around it stays readable.
+header on requests routed through that connection; send `null` to clear it. A connection without a
+`name` still reports one: the header falls back to the connection's `displayName` and then to its
+`email`, so every routed response names the account that served it (and a client can tell an
+unchanged account from a changed one instead of losing the label between responses). It is omitted
+only when the connection carries no label at all. Only the email embedded in the label is masked —
+its first three characters stay visible and the rest becomes asterisks — so the header never
+carries a raw email, while the operator-chosen label around it stays readable.
 
 For synced/imported models, `PUT /api/provider-models` accepts `provider`, `modelId`, and
 `maxOutputTokenOverride`: a positive integer sets the manual output-token cap, and `null`

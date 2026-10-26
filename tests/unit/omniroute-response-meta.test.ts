@@ -1,10 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
+const ROOT = path.resolve(import.meta.dirname, "../..");
 
 import {
   attachOmniRouteMetaHeaders,
   buildOmniRouteResponseMetaHeaders,
   buildOmniRouteSseMetadataComment,
+  connectionHeaderLabel,
   formatOmniRouteCost,
   getOmniRouteTokenCounts,
 } from "../../src/domain/omnirouteResponseMeta.ts";
@@ -66,6 +71,55 @@ test("buildOmniRouteResponseMetaHeaders emits only the configured connection nam
   // when / then
   assert.equal(headers[OMNIROUTE_RESPONSE_HEADERS.connectionName], "Personal Work");
   assert.doesNotThrow(() => new Headers(headers));
+});
+
+test("connectionHeaderLabel reports the serving account on every routed response", () => {
+  // A connection the operator renamed wins, then the dashboard's display name, then the email —
+  // so a connection that was never renamed still reports one.
+  assert.equal(
+    connectionHeaderLabel({ name: "  Work Key  ", displayName: "Renamed", email: "a@b.io" }),
+    "Work Key"
+  );
+  assert.equal(
+    connectionHeaderLabel({ name: null, displayName: "Renamed", email: "a@b.io" }),
+    "Renamed"
+  );
+  assert.equal(connectionHeaderLabel({ name: "   ", displayName: "", email: "a@b.io" }), "a@b.io");
+  // Nothing to report: the header is left out rather than sent empty, and no connection id is
+  // ever invented to fill the gap.
+  assert.equal(connectionHeaderLabel({ name: null, displayName: null, email: " " }), null);
+  assert.equal(connectionHeaderLabel(null), null);
+  assert.equal(connectionHeaderLabel(undefined), null);
+});
+
+test("a label that falls back to the email is still masked on the wire", () => {
+  // given
+  const email = "ca.felipe.rios@outlook.com";
+  const connectionName = connectionHeaderLabel({ name: null, displayName: null, email });
+
+  // when
+  const headers = buildOmniRouteResponseMetaHeaders({ connectionName });
+
+  // then
+  assert.equal(
+    headers[OMNIROUTE_RESPONSE_HEADERS.connectionName],
+    `${email.slice(0, 3)}${"*".repeat(email.length - 3)}`
+  );
+});
+
+test("both chat success paths report the serving connection's label", () => {
+  // The header is what tells a client which account served a response, so neither success path
+  // may read `credentials.name` alone: an unrenamed connection would vanish from the response
+  // and the client's last known account would go stale.
+  for (const leaf of [
+    "open-sse/handlers/chatCore/streamingTail.ts",
+    "open-sse/handlers/chatCore/nonStreamingResponse.ts",
+  ]) {
+    assert.match(
+      readFileSync(path.join(ROOT, leaf), "utf8"),
+      /connectionName: connectionHeaderLabel\(credentials\)/
+    );
+  }
 });
 
 test("buildOmniRouteResponseMetaHeaders omits a missing or blank connection name", () => {
