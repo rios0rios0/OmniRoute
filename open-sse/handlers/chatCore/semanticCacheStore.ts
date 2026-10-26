@@ -54,6 +54,7 @@ export function storeSemanticCacheResponse(
     translatedResponse: unknown;
     model: string;
     provider?: string;
+    connectionName?: string;
     apiKeyId?: string;
     usage?: UsageLike;
     log?: LoggerLike;
@@ -93,6 +94,7 @@ export function storeSemanticCacheResponse(
           args.provider ||
           ((args.translatedResponse as Record<string, unknown>).provider as string) ||
           "",
+        connectionName: args.connectionName,
         apiKeyId: args.apiKeyId,
         signature,
         tokensSaved,

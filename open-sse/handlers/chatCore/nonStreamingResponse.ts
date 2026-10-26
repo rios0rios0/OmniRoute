@@ -959,6 +959,7 @@ export async function runNonStreamingResponse(deps: NonStreamingDeps) {
       // The dual-layer manager scopes entries per provider (cacheByProvider);
       // lookup passes the resolved provider, so the write must too (#14159).
       provider,
+      connectionName: connectionHeaderLabel(credentials),
       apiKeyId: apiKeyInfo?.id ?? undefined,
       usage,
       log,

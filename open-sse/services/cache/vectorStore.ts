@@ -16,6 +16,7 @@ export interface CacheEntry {
   promptText: string;
   model: string;
   provider: string;
+  connectionName?: string;
   apiKeyId?: string;
   cacheKey?: string;
   response: Record<string, unknown>;
