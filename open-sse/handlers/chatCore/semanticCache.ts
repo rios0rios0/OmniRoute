@@ -188,6 +188,7 @@ export async function checkSemanticCache({
       attachOmniRouteMetaHeaders(headers, {
         provider,
         model,
+        connectionName: managerResult.entry?.connectionName,
         cacheHit: true,
         latencyMs: Date.now() - startTime,
         usage: cachedUsage,

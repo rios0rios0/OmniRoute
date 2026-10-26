@@ -597,6 +597,7 @@ export async function runStreamingTail(deps: StreamingTailDeps) {
       headers: clientRawRequest?.headers,
       model,
       provider,
+      connectionName: connectionHeaderLabel(credentials),
       apiKeyId: apiKeyInfo?.id ?? undefined,
       streamUsage,
       log,

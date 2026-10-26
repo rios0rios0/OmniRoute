@@ -67,6 +67,7 @@ export interface CacheStoreParams {
   streamChunks?: Array<Record<string, unknown>>;
   model: string;
   provider: string;
+  connectionName?: string;
   apiKeyId?: string | null;
   signature?: string;
   tokensSaved?: number;
@@ -443,6 +444,7 @@ export class SemanticCacheManager {
       promptText,
       model: params.model,
       provider: params.provider,
+      connectionName: params.connectionName,
       apiKeyId: params.apiKeyId || undefined,
       cacheKey: cacheKey || undefined,
       response: params.response,
