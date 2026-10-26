@@ -5,6 +5,7 @@
  */
 
 import { meteredBudgetCost } from "@/lib/usage/meteredBudgetPolicy";
+import { connectionHeaderLabel } from "@/domain/omnirouteResponseMeta";
 import { readCpaAuthIndex } from "../chatCore/failureUsage.ts";
 
 import { createRoutingEvent, emitRoutingEvent } from "../../services/routing/index.ts";
@@ -1011,7 +1012,7 @@ export async function runNonStreamingResponse(deps: NonStreamingDeps) {
     const responseHeaders = buildNonStreamingResponseHeaders({
       provider,
       model: responseModel,
-      connectionName: credentials?.name ?? null,
+      connectionName: connectionHeaderLabel(credentials),
       startTime,
       responseUsage,
       estimatedCost,

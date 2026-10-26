@@ -57,6 +57,7 @@ import { recordStreamingUsageStats } from "./streamingUsageStats.ts";
 import { maybeSyncClaudeExtraUsageState } from "./telemetryHelpers.ts";
 import { getExecutorTimeoutMs, resolveConnectionTimeoutMs } from "./upstreamTimeouts.ts";
 import { recordCost } from "@/domain/costRules";
+import { connectionHeaderLabel } from "@/domain/omnirouteResponseMeta";
 import { extractFacts } from "@/lib/memory/extraction";
 import { calculateCost } from "@/lib/usage/costCalculator";
 import { appendRequestLog, trackPendingRequest } from "@/lib/usageDb";
@@ -322,7 +323,7 @@ export async function runStreamingTail(deps: StreamingTailDeps) {
     providerHeaders: providerResponse.headers,
     provider,
     model: responseModel,
-    connectionName: credentials?.name ?? null,
+    connectionName: connectionHeaderLabel(credentials),
     pendingRequestId,
     compressionResponseMeta,
     comboStrategy,

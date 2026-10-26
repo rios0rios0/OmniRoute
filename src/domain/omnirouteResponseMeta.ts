@@ -136,6 +136,37 @@ export function buildOmniRouteDecisionHeaderValue({
   return toHeaderValue(parts.join("; "));
 }
 
+/**
+ * The account label every routed chat response reports in `X-OmniRoute-Connection-Name`.
+ *
+ * A client that keeps the last label it saw (OpenCode's footer does) replaces it only when this
+ * header changes, so a response that silently dropped it would either blank the label or leave a
+ * stale account on screen. Reporting the serving account is therefore part of every success
+ * response, not a best-effort extra: the label follows the dashboard's account priority
+ * (name → displayName → email, the email masked by {@link buildOmniRouteResponseMetaHeaders}) so a
+ * connection that was never renamed still reports one.
+ *
+ * The chain deliberately stops before the dashboard's `Account #<id>` fallback: a partial
+ * connection id must never leave through a response header. Returns `null` only when the
+ * connection carries no label at all, and then the header is omitted rather than sent empty.
+ */
+export function connectionHeaderLabel(
+  connection:
+    | {
+        name?: string | null;
+        displayName?: string | null;
+        email?: string | null;
+      }
+    | null
+    | undefined
+): string | null {
+  if (!connection) return null;
+  for (const candidate of [connection.name, connection.displayName, connection.email]) {
+    if (typeof candidate === "string" && candidate.trim().length > 0) return candidate.trim();
+  }
+  return null;
+}
+
 export function buildOmniRouteResponseMetaHeaders({
   cacheHit = false,
   costUsd = 0,

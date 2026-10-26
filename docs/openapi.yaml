@@ -1587,8 +1587,10 @@ paths:
               schema:
                 type: string
               description: >-
-                Configured `name` of the provider connection that served the response
-                (name on PUT /api/providers/{id}). Omitted when unset; only the email
+                Account label of the provider connection that served the response:
+                `name` (PUT /api/providers/{id}), then `displayName`, then `email`,
+                so every routed response names the account that served it. Omitted
+                only when the connection carries no label at all; only the email
                 embedded in the label is masked (its first three characters stay
                 visible) so the header never carries a raw email, connection ID,
                 API-key ID, or credential.
